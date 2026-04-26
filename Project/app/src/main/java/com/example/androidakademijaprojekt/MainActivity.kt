@@ -293,13 +293,15 @@ fun EditNoteScreen(
         mutableStateOf(existingNote?.content ?: "")
     }
 
+    val createdAt = existingNote?.createdAt ?: "26.04.2026."
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(30.dp)
     ) {
         TitleText(
-            text = if (existingNote == null) "Nova bilješka" else "Uredi bilješku"
+            text = if (existingNote == null) "New note" else "Edit note"
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -310,7 +312,7 @@ fun EditNoteScreen(
                 title = newTitle
             },
             label = {
-                Text("Naslov")
+                Text("Title")
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -323,17 +325,29 @@ fun EditNoteScreen(
                 content = newContent
             },
             label = {
-                Text("Opis")
+                Text("Description")
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(150.dp)
         )
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        TextField(
+            value = createdAt,
+            onValueChange = {},
+            label = {
+                Text("Date")
+            },
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(modifier = Modifier.height(20.dp))
 
         CustomButton(
-            text = "Spremi",
+            text = "Save",
             onClick = {
                 editViewModel.saveNote(
                     id = noteId,
