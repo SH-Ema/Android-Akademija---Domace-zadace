@@ -1,19 +1,27 @@
 package com.example.androidakademijaprojekt.repository
 
 import com.example.androidakademijaprojekt.model.Note
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class NoteRepository {
 
+    private fun getCurrentDate(): String {
+        val formatter = SimpleDateFormat("dd.MM.yyyy.", Locale.getDefault())
+        return formatter.format(Date())
+    }
+
     private val notes = mutableListOf(
-        Note(1, "Android Akademija", "Prvo", "26.04.2026."),
-        Note(2, "Uvod u Kotlin", "Drugo", "26.04.2026."),
-        Note(3, "Napredni Kotlin", "Treće", "26.04.2026."),
-        Note(4, "Uvod u Android", "Četvrto", "26.04.2026."),
-        Note(5, "Arhitektura", "Peto", "26.04.2026.")
+        Note(1, "Android Akademija", "Prvo", "26.04.2026.", "https://picsum.photos/300/300"),
+        Note(2, "Uvod u Kotlin", "Drugo", "26.04.2026.", "https://picsum.photos/300/300"),
+        Note(3, "Napredni Kotlin", "Treće", "26.04.2026.", "https://picsum.photos/300/300"),
+        Note(4, "Uvod u Android", "Četvrto", "26.04.2026.", "https://picsum.photos/300/300"),
+        Note(5, "Arhitektura", "Peto", "26.04.2026.", "https://picsum.photos/300/300")
     )
 
     fun getNotes(): List<Note> {
-        return notes
+        return notes.toList()
     }
 
     fun getNoteById(id: Int): Note? {
@@ -28,7 +36,8 @@ class NoteRepository {
             id = newId,
             title = title,
             content = content,
-            createdAt = "26.04.2026."
+            createdAt = getCurrentDate(),
+            imageUrl = "https://picsum.photos/300/300"
         )
 
         notes.add(newNote)
@@ -47,6 +56,12 @@ class NoteRepository {
             )
 
             notes[index] = updatedNote
+        }
+    }
+
+    fun deleteNote(id: Int) {
+        notes.removeAll { note ->
+            note.id == id
         }
     }
 }

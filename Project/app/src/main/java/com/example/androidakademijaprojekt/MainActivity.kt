@@ -1,5 +1,13 @@
 package com.example.androidakademijaprojekt
 
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,13 +27,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 
@@ -37,6 +42,7 @@ import androidx.compose.runtime.setValue
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +66,16 @@ val noteRepository by lazy {
     NoteRepository()
 }
 
+fun isInternetAvailable(context: Context): Boolean {
+    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    val network = connectivityManager.activeNetwork ?: return false
+
+    val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+
+    return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+}
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,54 +94,103 @@ class MainActivity : ComponentActivity() {
                 val editViewModel = remember {
                     EditViewModel(noteRepository)
                 }
-
-
                 val notes = listViewModel.notes.value
 
                 val navController = rememberNavController()
 
-                NavHost(
-                    navController = navController,
-                    startDestination = "list"
-                ) {
-                    composable("list") {
-                        ListScreen(
-                            notes = notes,
-                            onShuffleClick = {
-                                listViewModel.shuffleNotes()
-                            },
-                            onAddClick = {
-                                navController.navigate("edit/new")
-                            },
-                            onNoteClick = { selectedNote ->
-                                navController.navigate("edit/${selectedNote.id}")
-                            }
-                        )
-                    }
+                val context = LocalContext.current
 
-                    composable(
-                        route = "edit/{noteId}",
-                        arguments = listOf(
-                            navArgument("noteId") {
-                                type = NavType.StringType
-                            }
-                        )
-                    ) { backStackEntry ->
+                var hasInternet by remember {
+                    mutableStateOf(isInternetAvailable(context))
+                }
 
-                        val noteIdText = backStackEntry.arguments?.getString("noteId")
+                if (!hasInternet) {
+                    NoInternetScreen(
+                        onRetryClick = {
+                            hasInternet = isInternetAvailable(context)
+                        }
+                    )
+                } else {
+                    NavHost(
+                        navController = navController,
+                        startDestination = "list"
+                    ) {
+                        composable("list") {
+                            ListScreen(
+                                notes = notes,
+                                onShuffleClick = {
+                                    listViewModel.shuffleNotes()
+                                },
+                                onAddClick = {
+                                    navController.navigate("edit/new")
+                                },
+                                onNoteClick = { selectedNote ->
+                                    navController.navigate("detail/${selectedNote.id}")
+                                },
+                                onEditClick = { selectedNote ->
+                                    navController.navigate("edit/${selectedNote.id}")
+                                },
+                                onDeleteClick = { selectedNote ->
+                                    listViewModel.deleteNote(selectedNote.id)
+                                }
+                            )
+                        }
 
-                        EditNoteScreen(
-                            noteIdText = noteIdText,
-                            editViewModel = editViewModel,
-                            onBackClick = {
-                                listViewModel.refreshNotes()
-                                navController.popBackStack()
-                            },
-                            onSaveClick = {
-                                listViewModel.refreshNotes()
-                                navController.popBackStack()
+                        composable(
+                            route = "detail/{noteId}",
+                            arguments = listOf(
+                                navArgument("noteId") {
+                                    type = NavType.IntType
+                                }
+                            )
+                        ) { backStackEntry ->
+
+                            val noteId = backStackEntry.arguments?.getInt("noteId")
+
+                            if (noteId == null || noteId < 0) {
+                                InvalidNoteScreen(
+                                    onBackClick = {
+                                        navController.popBackStack()
+                                    }
+                                )
+                            } else {
+                                val selectedNote = notes.firstOrNull { note ->
+                                    note.id == noteId
+                                }
+
+                                NoteDetailScreen(
+                                    note = selectedNote,
+                                    onBackClick = {
+                                        navController.popBackStack()
+                                    }
+                                )
                             }
-                        )
+                        }
+
+                        composable(
+                            route = "edit/{noteId}",
+                            arguments = listOf(
+                                navArgument("noteId") {
+                                    type = NavType.StringType
+                                }
+                            )
+                        ) { backStackEntry ->
+
+                            val noteIdText = backStackEntry.arguments?.getString("noteId")
+
+                            EditNoteScreen(
+                                noteIdText = noteIdText,
+                                editViewModel = editViewModel,
+                                onBackClick = {
+                                    listViewModel.refreshNotes()
+                                    navController.popBackStack()
+                                },
+                                onSaveClick = {
+                                    listViewModel.refreshNotes()
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -173,13 +238,15 @@ fun CustomButton(
 @Composable
 fun NoteCard(
     note: Note,
-    onClick: () -> Unit = {}
+    onCardClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp)
-            .clickable { onClick() },
+            .clickable { onCardClick() },
         shape = RoundedCornerShape(15.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
@@ -189,11 +256,26 @@ fun NoteCard(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = "Favorite icon",
-                    tint = Color.Red,
-                    modifier = Modifier.size(50.dp)
+                SubcomposeAsyncImage(
+                    model = note.imageUrl,
+                    contentDescription = "Note picture",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(16.dp)),
+                    loading = {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(30.dp)
+                        )
+                    },
+                    error = {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(30.dp)
+                        )
+                    },
+                    success = {
+                        SubcomposeAsyncImageContent()
+                    }
                 )
 
                 Spacer(modifier = Modifier.padding(10.dp))
@@ -210,11 +292,17 @@ fun NoteCard(
             Spacer(modifier = Modifier.height(15.dp))
 
             Row {
-                CustomButton(text = "Fav")
+                CustomButton(
+                    text = "Edit",
+                    onClick = onEditClick
+                )
 
                 Spacer(modifier = Modifier.padding(5.dp))
 
-                CustomButton(text = "Save")
+                CustomButton(
+                    text = "Delete",
+                    onClick = onDeleteClick
+                )
             }
         }
     }
@@ -223,7 +311,9 @@ fun NoteCard(
 @Composable
 fun NoteList(
     notes: List<Note>,
-    onNoteClick: (Note) -> Unit
+    onNoteClick: (Note) -> Unit,
+    onEditClick: (Note) -> Unit,
+    onDeleteClick: (Note) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -231,9 +321,9 @@ fun NoteList(
         items(notes) { note ->
             NoteCard(
                 note = note,
-                onClick = {
-                    onNoteClick(note)
-                }
+                onCardClick = { onNoteClick(note) },
+                onEditClick = { onEditClick(note) },
+                onDeleteClick = { onDeleteClick(note) }
             )
         }
     }
@@ -244,7 +334,9 @@ fun ListScreen(
     notes: List<Note>,
     onShuffleClick: () -> Unit,
     onAddClick: () -> Unit,
-    onNoteClick: (Note) -> Unit
+    onNoteClick: (Note) -> Unit,
+    onEditClick: (Note) -> Unit,
+    onDeleteClick: (Note) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -267,7 +359,114 @@ fun ListScreen(
 
         NoteList(
             notes = notes,
-            onNoteClick = onNoteClick
+            onNoteClick = onNoteClick,
+            onEditClick = onEditClick,
+            onDeleteClick = onDeleteClick
+        )
+    }
+}
+
+@Composable
+fun NoteDetailScreen(
+    note: Note?,
+    onBackClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(30.dp)
+    ) {
+        if (note == null) {
+            TitleText(text = "Note not found")
+
+            Spacer(modifier = Modifier.height(15.dp))
+
+            DescriptionText(text = "Error: ID not recognised.")
+        } else {
+            SubcomposeAsyncImage(
+                model = note.imageUrl,
+                contentDescription = "Note picture",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(15.dp)),
+                loading = { CircularProgressIndicator() },
+                error = { CircularProgressIndicator() },
+                success = { SubcomposeAsyncImageContent() }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            TitleText(text = note.title)
+
+            Spacer(modifier = Modifier.height(15.dp))
+
+            DescriptionText(text = note.content)
+
+            Spacer(modifier = Modifier.height(15.dp))
+
+            Text(text = "Date: ${note.createdAt}")
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        CustomButton(
+            text = "Back",
+            onClick = onBackClick
+        )
+    }
+}
+
+@Composable
+fun InvalidNoteScreen(
+    onBackClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(30.dp)
+    ) {
+        TitleText(text = "Error")
+
+        Spacer(modifier = Modifier.height(15.dp))
+
+        DescriptionText(text = "Error: ID not recognised.")
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        CustomButton(
+            text = "Back",
+            onClick = onBackClick
+        )
+    }
+}
+
+@Composable
+fun NoInternetScreen(
+    onRetryClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(30.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TitleText(text = "No internet")
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        CircularProgressIndicator(modifier = Modifier.size(60.dp))
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        DescriptionText(text = "Check your connection and try again.")
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        CustomButton(
+            text = "Retry",
+            onClick = onRetryClick
         )
     }
 }
@@ -293,7 +492,7 @@ fun EditNoteScreen(
         mutableStateOf(existingNote?.content ?: "")
     }
 
-    val createdAt = existingNote?.createdAt ?: "26.04.2026."
+    val createdAt = existingNote?.createdAt ?: ""
 
     Column(
         modifier = Modifier

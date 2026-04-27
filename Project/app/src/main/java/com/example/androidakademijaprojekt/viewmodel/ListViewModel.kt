@@ -19,4 +19,9 @@ class ListViewModel(
     fun refreshNotes() {
         notes.value = repository.getNotes()
     }
+
+    fun deleteNote(id: Int) {
+        repository.deleteNote(id)
+        refreshNotes()
+    }
 }
