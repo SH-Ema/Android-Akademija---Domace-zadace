@@ -1,6 +1,5 @@
 package com.example.androidakademijaprojekt.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.androidakademijaprojekt.repository.TaskRepository
@@ -8,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 
 class TaskListViewModel(
     private val taskRepository: TaskRepository
@@ -18,15 +16,7 @@ class TaskListViewModel(
     val uiState = _uiState.asStateFlow()
 
     fun loadTasks(authToken: String?) {
-        if (authToken.isNullOrBlank()) {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    errorMessage = "Auth token is missing."
-                )
-            }
-            return
-        }
+        val token = requireAuthToken(authToken) ?: return
 
         viewModelScope.launch {
             _uiState.update {
@@ -37,9 +27,7 @@ class TaskListViewModel(
             }
 
             try {
-                val tasks = taskRepository.getAllTasks(authToken)
-
-                Log.d("TASK_DEBUG", "Tasks loaded: $tasks")
+                val tasks = taskRepository.getAllTasks(token)
 
                 _uiState.update {
                     it.copy(
@@ -48,34 +36,57 @@ class TaskListViewModel(
                         errorMessage = null
                     )
                 }
-            } catch (exception: HttpException) {
-                val errorBody = exception.response()?.errorBody()?.string()
-
-                Log.e(
-                    "TASK_DEBUG",
-                    "HTTP error: ${exception.code()} - $errorBody"
-                )
-
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "Failed to load. HTTP ${exception.code()}"
-                    )
-                }
             } catch (exception: Exception) {
-                Log.e(
-                    "TASK_DEBUG",
-                    "Other error: ${exception.message}",
-                    exception
-                )
-
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to load: ${exception.message}"
+                        errorMessage = "Failed to load tasks."
                     )
                 }
             }
         }
+    }
+
+    fun deleteTask(
+        authToken: String?,
+        taskId: String
+    ) {
+        val token = requireAuthToken(authToken) ?: return
+
+        viewModelScope.launch {
+            try {
+                taskRepository.deleteTask(
+                    authToken = token,
+                    taskId = taskId
+                )
+
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        tasks = currentState.tasks.filterNot { task ->
+                            task.id == taskId
+                        },
+                        errorMessage = null
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = "Failed to delete task.")
+                }
+            }
+        }
+    }
+
+    private fun requireAuthToken(authToken: String?): String? {
+        if (authToken.isNullOrBlank()) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = "Token is missing."
+                )
+            }
+            return null
+        }
+
+        return authToken
     }
 }
