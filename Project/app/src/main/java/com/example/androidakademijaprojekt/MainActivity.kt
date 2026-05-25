@@ -1,18 +1,12 @@
 package com.example.androidakademijaprojekt
 
-import coil3.compose.SubcomposeAsyncImage
-import coil3.compose.SubcomposeAsyncImageContent
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.layout.ContentScale
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,83 +20,80 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import com.example.androidakademijaprojekt.model.Note
+import com.example.androidakademijaprojekt.repository.AuthRepository
 import com.example.androidakademijaprojekt.repository.NoteRepository
+import com.example.androidakademijaprojekt.repository.TaskRepository
 import com.example.androidakademijaprojekt.ui.theme.AndroidAkademijaProjektTheme
 import com.example.androidakademijaprojekt.viewmodel.EditViewModel
 import com.example.androidakademijaprojekt.viewmodel.ListViewModel
+import com.example.androidakademijaprojekt.viewmodel.LoginViewModel
+import com.example.androidakademijaprojekt.viewmodel.LoginViewModelFactory
+import com.example.androidakademijaprojekt.viewmodel.TaskListViewModel
+import com.example.androidakademijaprojekt.viewmodel.TaskListViewModelFactory
 
-
-val noteRepository by lazy {
-    NoteRepository()
-}
+val noteRepository by lazy { NoteRepository() }
 
 fun isInternetAvailable(context: Context): Boolean {
-    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val connectivityManager =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     val network = connectivityManager.activeNetwork ?: return false
-
     val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
 
     return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 }
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         enableEdgeToEdge()
 
         setContent {
             AndroidAkademijaProjektTheme {
+                val authRepository = remember { AuthRepository() }
+                val taskRepository = remember { TaskRepository() }
 
+                val listViewModel = remember { ListViewModel(noteRepository) }
+                val editViewModel = remember { EditViewModel(noteRepository) }
 
-                val listViewModel = remember {
-                    ListViewModel(noteRepository)
-                }
-
-                val editViewModel = remember {
-                    EditViewModel(noteRepository)
-                }
                 val notes = listViewModel.notes.value
-
                 val navController = rememberNavController()
 
                 val context = LocalContext.current
-
-                var hasInternet by remember {
-                    mutableStateOf(isInternetAvailable(context))
-                }
+                var hasInternet by remember { mutableStateOf(isInternetAvailable(context)) }
 
                 if (!hasInternet) {
                     NoInternetScreen(
@@ -113,25 +104,54 @@ class MainActivity : ComponentActivity() {
                 } else {
                     NavHost(
                         navController = navController,
-                        startDestination = "list"
+                        startDestination = "login"
                     ) {
+                        composable("login") {
+                            val loginViewModel: LoginViewModel = viewModel(
+                                factory = LoginViewModelFactory(authRepository)
+                            )
+
+                            val loginUiState by loginViewModel.uiState.collectAsState()
+
+                            LaunchedEffect(loginUiState.isLoggedIn) {
+                                if (loginUiState.isLoggedIn) {
+                                    navController.navigate("list") {
+                                        popUpTo("login") {
+                                            inclusive = true
+                                        }
+                                    }
+                                }
+                            }
+
+                            LoginScreen(
+                                uiState = loginUiState,
+                                onUsernameChange = loginViewModel::onUsernameChange,
+                                onPasswordChange = loginViewModel::onPasswordChange,
+                                onLoginClick = loginViewModel::login
+                            )
+                        }
+
                         composable("list") {
-                            ListScreen(
-                                notes = notes,
-                                onShuffleClick = {
-                                    listViewModel.shuffleNotes()
-                                },
+                            val taskListViewModel: TaskListViewModel = viewModel(
+                                factory = TaskListViewModelFactory(taskRepository)
+                            )
+
+                            val taskListUiState by taskListViewModel.uiState.collectAsState()
+
+                            LaunchedEffect(authRepository.authToken) {
+                                taskListViewModel.loadTasks(authRepository.authToken)
+                            }
+
+                            TaskListScreen(
+                                uiState = taskListUiState,
                                 onAddClick = {
                                     navController.navigate("edit/new")
                                 },
-                                onNoteClick = { selectedNote ->
-                                    navController.navigate("detail/${selectedNote.id}")
+                                onTaskClick = { selectedTask ->
+                                    navController.navigate("edit/${selectedTask.id}")
                                 },
-                                onEditClick = { selectedNote ->
-                                    navController.navigate("edit/${selectedNote.id}")
-                                },
-                                onDeleteClick = { selectedNote ->
-                                    listViewModel.deleteNote(selectedNote.id)
+                                onRefreshClick = {
+                                    taskListViewModel.loadTasks(authRepository.authToken)
                                 }
                             )
                         }
@@ -144,7 +164,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         ) { backStackEntry ->
-
                             val noteId = backStackEntry.arguments?.getInt("noteId")
 
                             if (noteId == null || noteId < 0) {
@@ -175,17 +194,26 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         ) { backStackEntry ->
-
                             val noteIdText = backStackEntry.arguments?.getString("noteId")
+                            val noteId = noteIdText?.toIntOrNull()
+
+                            val existingNote = noteId?.let { id ->
+                                editViewModel.getNoteById(id)
+                            }
 
                             EditNoteScreen(
-                                noteIdText = noteIdText,
-                                editViewModel = editViewModel,
+                                note = existingNote,
                                 onBackClick = {
                                     listViewModel.refreshNotes()
                                     navController.popBackStack()
                                 },
-                                onSaveClick = {
+                                onSaveClick = { title, content ->
+                                    editViewModel.saveNote(
+                                        id = noteId,
+                                        title = title,
+                                        content = content
+                                    )
+
                                     listViewModel.refreshNotes()
                                     navController.popBackStack()
                                 }
@@ -246,7 +274,9 @@ fun NoteCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp)
-            .clickable { onCardClick() },
+            .clickable {
+                onCardClick()
+            },
         shape = RoundedCornerShape(15.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
@@ -321,9 +351,15 @@ fun NoteList(
         items(notes) { note ->
             NoteCard(
                 note = note,
-                onCardClick = { onNoteClick(note) },
-                onEditClick = { onEditClick(note) },
-                onDeleteClick = { onDeleteClick(note) }
+                onCardClick = {
+                    onNoteClick(note)
+                },
+                onEditClick = {
+                    onEditClick(note)
+                },
+                onDeleteClick = {
+                    onDeleteClick(note)
+                }
             )
         }
     }
@@ -391,9 +427,15 @@ fun NoteDetailScreen(
                     .fillMaxWidth()
                     .height(200.dp)
                     .clip(RoundedCornerShape(15.dp)),
-                loading = { CircularProgressIndicator() },
-                error = { CircularProgressIndicator() },
-                success = { SubcomposeAsyncImageContent() }
+                loading = {
+                    CircularProgressIndicator()
+                },
+                error = {
+                    CircularProgressIndicator()
+                },
+                success = {
+                    SubcomposeAsyncImageContent()
+                }
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -456,7 +498,9 @@ fun NoInternetScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        CircularProgressIndicator(modifier = Modifier.size(60.dp))
+        CircularProgressIndicator(
+            modifier = Modifier.size(60.dp)
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -473,26 +517,19 @@ fun NoInternetScreen(
 
 @Composable
 fun EditNoteScreen(
-    noteIdText: String?,
-    editViewModel: EditViewModel,
+    note: Note?,
     onBackClick: () -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: (title: String, content: String) -> Unit
 ) {
-    val noteId = noteIdText?.toIntOrNull()
-
-    val existingNote = noteId?.let { id ->
-        editViewModel.getNoteById(id)
+    var title by remember(note?.id) {
+        mutableStateOf(note?.title ?: "")
     }
 
-    var title by remember(noteIdText) {
-        mutableStateOf(existingNote?.title ?: "")
+    var content by remember(note?.id) {
+        mutableStateOf(note?.content ?: "")
     }
 
-    var content by remember(noteIdText) {
-        mutableStateOf(existingNote?.content ?: "")
-    }
-
-    val createdAt = existingNote?.createdAt ?: ""
+    val createdAt = note?.createdAt ?: ""
 
     Column(
         modifier = Modifier
@@ -500,7 +537,7 @@ fun EditNoteScreen(
             .padding(30.dp)
     ) {
         TitleText(
-            text = if (existingNote == null) "New note" else "Edit note"
+            text = if (note == null) "New note" else "Edit note"
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -548,13 +585,7 @@ fun EditNoteScreen(
         CustomButton(
             text = "Save",
             onClick = {
-                editViewModel.saveNote(
-                    id = noteId,
-                    title = title,
-                    content = content
-                )
-
-                onSaveClick()
+                onSaveClick(title, content)
             }
         )
 
