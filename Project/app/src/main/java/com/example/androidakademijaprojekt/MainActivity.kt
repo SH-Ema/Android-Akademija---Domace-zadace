@@ -121,9 +121,7 @@ class MainActivity : ComponentActivity() {
 
                             TaskListScreen(
                                 uiState = taskListUiState,
-                                onAddClick = {
-                                    navController.navigate("edit/new")
-                                },
+                                onAddClick = { navController.navigate("edit/new") },
                                 onTaskClick = { selectedTask ->
                                     navController.navigate("edit/${selectedTask.id}")
                                 },
@@ -132,9 +130,6 @@ class MainActivity : ComponentActivity() {
                                         authToken = authRepository.authToken,
                                         taskId = selectedTask.id
                                     )
-                                },
-                                onRefreshClick = {
-                                    taskListViewModel.loadTasks(authRepository.authToken)
                                 }
                             )
                         }
@@ -188,12 +183,8 @@ class MainActivity : ComponentActivity() {
                                 uiState = editTaskUiState,
                                 onTitleChange = editTaskViewModel::onTitleChange,
                                 onBodyChange = editTaskViewModel::onBodyChange,
-                                onSaveClick = {
-                                    editTaskViewModel.saveTask(authRepository.authToken)
-                                },
-                                onBackClick = {
-                                    navController.popBackStack()
-                                }
+                                onDoneClick = { editTaskViewModel.saveTask(authRepository.authToken) },
+                                onBackClick = { navController.popBackStack() }
                             )
                         }
                     }

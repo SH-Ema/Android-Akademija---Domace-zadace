@@ -1,5 +1,8 @@
 package com.example.androidakademijaprojekt.viewmodel
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.androidakademijaprojekt.repository.TaskRepository
@@ -15,8 +18,13 @@ class EditTaskViewModel(
     private val _uiState = MutableStateFlow(EditTaskUiState())
     val uiState = _uiState.asStateFlow()
 
+    private fun todayDate(): String {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    }
     fun prepareNewTask() {
-        _uiState.value = EditTaskUiState()
+        _uiState.value = EditTaskUiState(
+            createdAt = todayDate()
+        )
     }
 
     fun loadTask(
@@ -45,6 +53,7 @@ class EditTaskViewModel(
                         taskId = task.id,
                         title = task.title,
                         body = task.body,
+                        createdAt = task.createdAt ?: todayDate(),
                         isLoading = false,
                         errorMessage = null
                     )

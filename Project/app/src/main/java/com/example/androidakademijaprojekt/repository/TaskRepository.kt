@@ -1,13 +1,13 @@
 package com.example.androidakademijaprojekt.repository
 
-import com.example.androidakademijaprojekt.network.RetrofitInstance
+import com.example.androidakademijaprojekt.network.RetrofitInstance.api
 import com.example.androidakademijaprojekt.network.model.TaskRequest
 import com.example.androidakademijaprojekt.network.model.TaskResponse
 
 class TaskRepository {
 
     suspend fun getAllTasks(authToken: String): List<TaskResponse> {
-        val response = RetrofitInstance.api.getAllTasks(
+        val response = api.getAllTasks(
             authToken = authHeader(authToken)
         )
 
@@ -18,7 +18,7 @@ class TaskRepository {
         authToken: String,
         taskId: String
     ): TaskResponse {
-        return RetrofitInstance.api.getTaskById(
+        return api.getTaskById(
             authToken = authHeader(authToken),
             taskId = taskId
         )
@@ -29,8 +29,8 @@ class TaskRepository {
         title: String,
         body: String
     ): TaskResponse {
-        return RetrofitInstance.api.createTask(
-            authToken = authHeader(authToken),
+        return api.createTask(
+            authToken = "Bearer $authToken",
             request = TaskRequest(
                 title = title,
                 body = body
@@ -44,8 +44,8 @@ class TaskRepository {
         title: String,
         body: String
     ) {
-        RetrofitInstance.api.updateTask(
-            authToken = authHeader(authToken),
+        api.updateTask(
+            authToken = "Bearer $authToken",
             taskId = taskId,
             request = TaskRequest(
                 title = title,
@@ -58,7 +58,7 @@ class TaskRepository {
         authToken: String,
         taskId: String
     ) {
-        RetrofitInstance.api.deleteTask(
+        api.deleteTask(
             authToken = authHeader(authToken),
             taskId = taskId
         )

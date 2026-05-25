@@ -20,7 +20,7 @@ fun EditTaskScreen(
     uiState: EditTaskUiState,
     onTitleChange: (String) -> Unit,
     onBodyChange: (String) -> Unit,
-    onSaveClick: () -> Unit,
+    onDoneClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
     Column(
@@ -65,12 +65,22 @@ fun EditTaskScreen(
 
             Spacer(modifier = Modifier.height(15.dp))
 
+            TextField(
+                value = uiState.createdAt,
+                onValueChange = {},
+                label = {
+                    Text("Date")
+                },
+                enabled = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             if (uiState.isSaving) {
                 CircularProgressIndicator()
             } else {
                 CustomButton(
-                    text = "Save",
-                    onClick = onSaveClick
+                    text = "Done",
+                    onClick = onDoneClick
                 )
             }
 

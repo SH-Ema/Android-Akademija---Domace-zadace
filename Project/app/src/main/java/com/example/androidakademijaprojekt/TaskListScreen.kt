@@ -34,12 +34,9 @@ fun TaskListScreen(
     uiState: TaskListUiState,
     onAddClick: () -> Unit,
     onTaskClick: (TaskResponse) -> Unit,
-    onTaskLongClick: (TaskResponse) -> Unit,
-    onRefreshClick: () -> Unit
-) {
-    var taskToDelete by remember {
-        mutableStateOf<TaskResponse?>(null)
-    }
+    onTaskLongClick: (TaskResponse) -> Unit
+){
+    var taskToDelete by remember { mutableStateOf<TaskResponse?>(null) }
 
     Column(
         modifier = Modifier
@@ -48,15 +45,8 @@ fun TaskListScreen(
     ) {
         Row {
             CustomButton(
-                text = "Add task",
+                text = "+",
                 onClick = onAddClick
-            )
-
-            Spacer(modifier = Modifier.padding(5.dp))
-
-            CustomButton(
-                text = "Refresh",
-                onClick = onRefreshClick
             )
         }
 
