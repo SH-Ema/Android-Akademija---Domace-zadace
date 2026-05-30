@@ -15,6 +15,23 @@ class TaskListViewModel(
     private val _uiState = MutableStateFlow(TaskListUiState())
     val uiState = _uiState.asStateFlow()
 
+    init {
+        observeLocalTasks()
+    }
+
+    private fun observeLocalTasks() {
+        viewModelScope.launch {
+            taskRepository.observeTasks().collect { tasks ->
+                _uiState.update {
+                    it.copy(
+                        tasks = tasks,
+                        isLoading = false
+                    )
+                }
+            }
+        }
+    }
+
     fun loadTasks(authToken: String?) {
         val token = requireAuthToken(authToken) ?: return
 
@@ -27,11 +44,10 @@ class TaskListViewModel(
             }
 
             try {
-                val tasks = taskRepository.getAllTasks(token)
+                taskRepository.getAllTasks(token)
 
                 _uiState.update {
                     it.copy(
-                        tasks = tasks,
                         isLoading = false,
                         errorMessage = null
                     )
@@ -60,13 +76,8 @@ class TaskListViewModel(
                     taskId = taskId
                 )
 
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        tasks = currentState.tasks.filterNot { task ->
-                            task.id == taskId
-                        },
-                        errorMessage = null
-                    )
+                _uiState.update {
+                    it.copy(errorMessage = null)
                 }
             } catch (exception: Exception) {
                 _uiState.update {

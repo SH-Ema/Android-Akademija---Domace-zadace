@@ -1,5 +1,6 @@
 package com.example.androidakademijaprojekt
 
+import com.example.androidakademijaprojekt.database.TaskDatabase
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -64,12 +65,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AndroidAkademijaProjektTheme {
-                val authRepository = remember { AuthRepository() }
-                val taskRepository = remember { TaskRepository() }
-
-                val navController = rememberNavController()
-
                 val context = this@MainActivity
+                val authRepository = remember { AuthRepository() }
+                val taskDatabase = remember { TaskDatabase.getDatabase(context) }
+                val taskRepository = remember { TaskRepository(taskDatabase.taskDao()) }
+                val navController = rememberNavController()
                 var hasInternet by remember { mutableStateOf(isInternetAvailable(context)) }
 
                 if (!hasInternet) {
