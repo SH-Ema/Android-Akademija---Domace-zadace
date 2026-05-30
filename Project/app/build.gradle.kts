@@ -41,6 +41,10 @@ android {
 }
 
 dependencies {
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose)
+    implementation(libs.koin.compose.viewmodel)
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

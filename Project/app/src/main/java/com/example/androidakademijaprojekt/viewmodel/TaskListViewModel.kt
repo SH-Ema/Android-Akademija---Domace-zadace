@@ -1,5 +1,6 @@
 package com.example.androidakademijaprojekt.viewmodel
 
+import com.example.androidakademijaprojekt.logger.AppLogger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.androidakademijaprojekt.repository.TaskRepository
@@ -9,7 +10,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class TaskListViewModel(
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskListUiState())

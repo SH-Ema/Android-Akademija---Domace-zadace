@@ -1,6 +1,5 @@
 package com.example.androidakademijaprojekt
 
-import com.example.androidakademijaprojekt.database.TaskDatabase
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -32,21 +31,18 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.androidakademijaprojekt.repository.AuthRepository
-import com.example.androidakademijaprojekt.repository.TaskRepository
 import com.example.androidakademijaprojekt.ui.theme.AndroidAkademijaProjektTheme
 import com.example.androidakademijaprojekt.viewmodel.EditTaskViewModel
-import com.example.androidakademijaprojekt.viewmodel.EditTaskViewModelFactory
 import com.example.androidakademijaprojekt.viewmodel.LoginViewModel
-import com.example.androidakademijaprojekt.viewmodel.LoginViewModelFactory
 import com.example.androidakademijaprojekt.viewmodel.TaskListViewModel
-import com.example.androidakademijaprojekt.viewmodel.TaskListViewModelFactory
+import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 
 fun isInternetAvailable(context: Context): Boolean {
     val connectivityManager =
@@ -66,9 +62,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             AndroidAkademijaProjektTheme {
                 val context = this@MainActivity
-                val authRepository = remember { AuthRepository() }
-                val taskDatabase = remember { TaskDatabase.getDatabase(context) }
-                val taskRepository = remember { TaskRepository(taskDatabase.taskDao()) }
+                val authRepository: AuthRepository = koinInject()
                 val navController = rememberNavController()
                 var hasInternet by remember { mutableStateOf(isInternetAvailable(context)) }
 
@@ -84,10 +78,7 @@ class MainActivity : ComponentActivity() {
                         startDestination = "login"
                     ) {
                         composable("login") {
-                            val loginViewModel: LoginViewModel = viewModel(
-                                factory = LoginViewModelFactory(authRepository)
-                            )
-
+                            val loginViewModel: LoginViewModel = koinViewModel()
                             val loginUiState by loginViewModel.uiState.collectAsState()
 
                             LaunchedEffect(loginUiState.isLoggedIn) {
@@ -109,9 +100,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("list") {
-                            val taskListViewModel: TaskListViewModel = viewModel(
-                                factory = TaskListViewModelFactory(taskRepository)
-                            )
+                            val taskListViewModel: TaskListViewModel = koinViewModel()
 
                             val taskListUiState by taskListViewModel.uiState.collectAsState()
 
@@ -149,9 +138,7 @@ class MainActivity : ComponentActivity() {
                                 taskIdText
                             }
 
-                            val editTaskViewModel: EditTaskViewModel = viewModel(
-                                factory = EditTaskViewModelFactory(taskRepository)
-                            )
+                            val editTaskViewModel: EditTaskViewModel = koinViewModel()
 
                             val editTaskUiState by editTaskViewModel.uiState.collectAsState()
 

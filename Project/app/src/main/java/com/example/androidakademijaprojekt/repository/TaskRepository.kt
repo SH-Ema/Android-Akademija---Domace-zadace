@@ -6,7 +6,8 @@ import com.example.androidakademijaprojekt.database.toEntity
 import com.example.androidakademijaprojekt.database.toEntityList
 import com.example.androidakademijaprojekt.database.toResponse
 import com.example.androidakademijaprojekt.database.toResponseList
-import com.example.androidakademijaprojekt.network.RetrofitInstance.api
+import com.example.androidakademijaprojekt.logger.AppLogger
+import com.example.androidakademijaprojekt.network.TaskieApiService
 import com.example.androidakademijaprojekt.network.model.TaskRequest
 import com.example.androidakademijaprojekt.network.model.TaskResponse
 import kotlinx.coroutines.flow.Flow
@@ -17,22 +18,27 @@ import java.util.Locale
 import java.util.UUID
 
 class TaskRepository(
-    private val taskDao: TaskDao
+    private val api: TaskieApiService,
+    private val taskDao: TaskDao,
+    private val logger: AppLogger
 ) {
 
     fun observeTasks(): Flow<List<TaskResponse>> {
-        return taskDao.observeTasks().map { taskEntities ->
+         return taskDao.observeTasks().map { taskEntities ->
             taskEntities.toResponseList()
         }
     }
 
     suspend fun getAllTasks(authToken: String): List<TaskResponse> {
+        logger.logI("Loading tasks.")
+
         return try {
             val response = api.getAllTasks(
                 authToken = authHeader(authToken)
             )
 
             taskDao.insertTasks(response.tasks.toEntityList())
+            logger.logI("Remote tasks saved to local database.")
 
             taskDao.getAllTasksOnce().toResponseList()
         } catch (exception: Exception) {
@@ -74,6 +80,7 @@ class TaskRepository(
         )
 
         taskDao.insertTask(localTask)
+        logger.logI("Task saved locally.")
 
         return try {
             val remoteTask = api.createTask(
@@ -87,6 +94,7 @@ class TaskRepository(
             taskDao.deleteTaskById(localTask.id)
             taskDao.insertTask(remoteTask.toEntity(isSynced = true))
 
+            logger.logI("Task synced with server.")
             remoteTask
         } catch (exception: Exception) {
             localTask.toResponse()
@@ -110,6 +118,7 @@ class TaskRepository(
         )
 
         taskDao.insertTask(localTask)
+        logger.logI("Task updated locally.")
 
         try {
             api.updateTask(
@@ -122,7 +131,8 @@ class TaskRepository(
             )
 
             taskDao.insertTask(localTask.copy(isSynced = true))
-        } catch (exception: Exception) { }
+        } catch (exception: Exception) {
+        }
     }
 
     suspend fun deleteTask(
@@ -130,21 +140,28 @@ class TaskRepository(
         taskId: String
     ) {
         taskDao.deleteTaskById(taskId)
+        logger.logI("Task deleted locally.")
 
         try {
             api.deleteTask(
                 authToken = authHeader(authToken),
                 taskId = taskId
             )
-        } catch (exception: Exception) { }
+
+            logger.logI("Task deleted from server.")
+        } catch (exception: Exception) {
+        }
     }
 
     suspend fun syncTasks(authToken: String) {
+        logger.logI("Syncing tasks with server.")
+
         val response = api.getAllTasks(
             authToken = authHeader(authToken)
         )
 
         taskDao.insertTasks(response.tasks.toEntityList())
+        logger.logI("Tasks synced and saved to local database.")
     }
 
     private fun authHeader(authToken: String): String {

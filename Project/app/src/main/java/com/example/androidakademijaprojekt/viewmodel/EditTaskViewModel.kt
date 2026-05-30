@@ -1,5 +1,6 @@
 package com.example.androidakademijaprojekt.viewmodel
 
+import com.example.androidakademijaprojekt.logger.AppLogger
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -12,7 +13,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class EditTaskViewModel(
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val logger: AppLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditTaskUiState())
