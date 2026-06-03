@@ -1,5 +1,8 @@
 package com.example.androidakademijaprojekt
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,13 +23,16 @@ fun EditTaskScreen(
     uiState: EditTaskUiState,
     onTitleChange: (String) -> Unit,
     onBodyChange: (String) -> Unit,
+    onTrainingSuggestionClick: (String, String) -> Unit,
     onDoneClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(30.dp)
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(20.dp)
     ) {
         TitleText(
             text = if (uiState.taskId == null) {
@@ -55,25 +61,57 @@ fun EditTaskScreen(
             TextField(
                 value = uiState.body,
                 onValueChange = onBodyChange,
-                label = {
-                    Text("Description")
-                },
+                label = { Text("Description") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp)
             )
+
+            if (uiState.title.startsWith("🏐")) {
+                Spacer(modifier = Modifier.height(15.dp))
+
+                VolleyballSuggestionSection(
+                    sectionTitle = "Warm-up",
+                    suggestions = listOf(
+                        "Dynamic stretching",
+                        "Pepper drill",
+                        "Shoulder mobility"
+                    ),
+                    onSuggestionClick = onTrainingSuggestionClick
+                )
+
+                VolleyballSuggestionSection(
+                    sectionTitle = "Drills",
+                    suggestions = listOf(
+                        "Serve receive",
+                        "Attack approach",
+                        "Blocking footwork"
+                    ),
+                    onSuggestionClick = onTrainingSuggestionClick
+                )
+
+                VolleyballSuggestionSection(
+                    sectionTitle = "Cool-down",
+                    suggestions = listOf(
+                        "Static stretching",
+                        "Breathing exercises",
+                        "Team feedback"
+                    ),
+                    onSuggestionClick = onTrainingSuggestionClick
+                )
+            }
 
             Spacer(modifier = Modifier.height(15.dp))
 
             TextField(
                 value = uiState.createdAt,
                 onValueChange = {},
-                label = {
-                    Text("Date")
-                },
+                label = { Text("Date") },
                 enabled = false,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(modifier = Modifier.height(28.dp))
 
             if (uiState.isSaving) {
                 CircularProgressIndicator()
@@ -84,7 +122,7 @@ fun EditTaskScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             CustomButton(
                 text = "Back",
@@ -101,4 +139,26 @@ fun EditTaskScreen(
             }
         }
     }
+}
+
+@Composable
+private fun VolleyballSuggestionSection(
+    sectionTitle: String,
+    suggestions: List<String>,
+    onSuggestionClick: (String, String) -> Unit
+) {
+    Text(text = "$sectionTitle ideas")
+
+    Spacer(modifier = Modifier.height(10.dp))
+
+    suggestions.forEach { suggestion ->
+        CustomButton(
+            text = suggestion,
+            onClick = {
+                onSuggestionClick(sectionTitle, suggestion)
+            }
+        )
+    }
+
+    Spacer(modifier = Modifier.height(10.dp))
 }

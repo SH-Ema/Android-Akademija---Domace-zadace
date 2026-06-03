@@ -29,6 +29,14 @@ class EditTaskViewModel(
         )
     }
 
+    fun prepareNewVolleyballTask() {
+        _uiState.value = EditTaskUiState(
+            title = "🏐 Volleyball training",
+            body = "Warm-up:\n\nDrills:\n\nCool-down:\n",
+            createdAt = todayDate()
+        )
+    }
+
     fun loadTask(
         authToken: String?,
         taskId: String
@@ -86,6 +94,62 @@ class EditTaskViewModel(
                 body = newBody,
                 errorMessage = null
             )
+        }
+    }
+
+    fun addTrainingSuggestion(sectionTitle: String, suggestion: String) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                body = addSuggestionToSection(
+                    body = currentState.body,
+                    sectionTitle = sectionTitle,
+                    suggestion = suggestion
+                ),
+                errorMessage = null
+            )
+        }
+    }
+
+    private fun addSuggestionToSection(
+        body: String,
+        sectionTitle: String,
+        suggestion: String
+    ): String {
+        val sectionHeader = "$sectionTitle:"
+        val suggestionLine = "- $suggestion"
+
+        if (body.contains(suggestionLine)) {
+            return body
+        }
+
+        if (!body.contains(sectionHeader)) {
+            return body.trimEnd() + "\n\n$sectionHeader\n$suggestionLine\n"
+        }
+
+        val allSectionHeaders = listOf(
+            "Warm-up:",
+            "Drills:",
+            "Cool-down:"
+        )
+
+        val sectionStartIndex = body.indexOf(sectionHeader)
+        val contentStartIndex = sectionStartIndex + sectionHeader.length
+
+        val nextSectionIndex = allSectionHeaders
+            .filter { it != sectionHeader }
+            .map { body.indexOf(it, startIndex = contentStartIndex) }
+            .filter { it != -1 }
+            .minOrNull()
+
+        val insertIndex = nextSectionIndex ?: body.length
+
+        val textBeforeInsert = body.substring(0, insertIndex).trimEnd()
+        val textAfterInsert = body.substring(insertIndex).trimStart()
+
+        return if (textAfterInsert.isBlank()) {
+            "$textBeforeInsert\n$suggestionLine\n"
+        } else {
+            "$textBeforeInsert\n$suggestionLine\n\n$textAfterInsert"
         }
     }
 

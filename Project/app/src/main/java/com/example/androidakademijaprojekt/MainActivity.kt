@@ -74,12 +74,9 @@ class MainActivity : ComponentActivity() {
 
                         TaskListScreen(
                             uiState = taskListUiState,
-                            onAddClick = {
-                                navController.navigate("edit/new")
-                            },
-                            onTaskClick = { selectedTask ->
-                                navController.navigate("edit/${selectedTask.id}")
-                            },
+                            onAddClick = { navController.navigate("edit/new") },
+                            onVolleyballClick = { navController.navigate("edit/volleyball") },
+                            onTaskClick = { selectedTask -> navController.navigate("edit/${selectedTask.id}") },
                             onTaskLongClick = { selectedTask ->
                                 taskListViewModel.deleteTask(
                                     authToken = authRepository.authToken,
@@ -98,7 +95,9 @@ class MainActivity : ComponentActivity() {
                         )
                     ) { backStackEntry ->
                         val taskIdText = backStackEntry.arguments?.getString("taskId")
-                        val taskId = if (taskIdText == "new") {
+                        val isVolleyballTask = taskIdText == "volleyball"
+
+                        val taskId = if (taskIdText == "new" || isVolleyballTask) {
                             null
                         } else {
                             taskIdText
@@ -107,8 +106,10 @@ class MainActivity : ComponentActivity() {
                         val editTaskViewModel: EditTaskViewModel = koinViewModel()
                         val editTaskUiState by editTaskViewModel.uiState.collectAsState()
 
-                        LaunchedEffect(taskId, authRepository.authToken) {
-                            if (taskId == null) {
+                        LaunchedEffect(taskIdText, authRepository.authToken) {
+                            if (isVolleyballTask) {
+                                editTaskViewModel.prepareNewVolleyballTask()
+                            } else if (taskId == null) {
                                 editTaskViewModel.prepareNewTask()
                             } else {
                                 editTaskViewModel.loadTask(
@@ -135,12 +136,9 @@ class MainActivity : ComponentActivity() {
                             uiState = editTaskUiState,
                             onTitleChange = editTaskViewModel::onTitleChange,
                             onBodyChange = editTaskViewModel::onBodyChange,
-                            onDoneClick = {
-                                editTaskViewModel.saveTask(authRepository.authToken)
-                            },
-                            onBackClick = {
-                                navController.popBackStack()
-                            }
+                            onTrainingSuggestionClick = editTaskViewModel::addTrainingSuggestion,
+                            onDoneClick = { editTaskViewModel.saveTask(authRepository.authToken) },
+                            onBackClick = { navController.popBackStack() }
                         )
                     }
                 }
@@ -178,10 +176,13 @@ fun CustomButton(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Black,
-            contentColor = Color.White
+            containerColor = Color(0xFFF7F2FA),
+            contentColor = Color(0xFF4C0F96)
         )
     ) {
-        Text(text = text)
+        Text(
+            text = text,
+            color = Color(0xFF4C0F96)
+        )
     }
 }

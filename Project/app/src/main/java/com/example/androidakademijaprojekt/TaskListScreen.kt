@@ -33,9 +33,10 @@ import com.example.androidakademijaprojekt.viewmodel.TaskListUiState
 fun TaskListScreen(
     uiState: TaskListUiState,
     onAddClick: () -> Unit,
+    onVolleyballClick: () -> Unit,
     onTaskClick: (TaskResponse) -> Unit,
     onTaskLongClick: (TaskResponse) -> Unit
-){
+) {
     var taskToDelete by remember { mutableStateOf<TaskResponse?>(null) }
 
     Column(
@@ -43,10 +44,17 @@ fun TaskListScreen(
             .fillMaxSize()
             .padding(35.dp)
     ) {
-        Row {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             CustomButton(
                 text = "+",
                 onClick = onAddClick
+            )
+
+            CustomButton(
+                text = "🏐",
+                onClick = onVolleyballClick
             )
         }
 
